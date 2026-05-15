@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 
-DEFAULT_SYMBOLS = ["SPY", "QQQ", "AAPL", "MSFT", "NVDA"]
+DEFAULT_SYMBOLS = ("SPY", "QQQ", "AAPL", "MSFT", "NVDA")
 
 
 @dataclass(frozen=True)
@@ -22,16 +22,31 @@ class RiskConfig:
     take_profit_pct: float = 0.20
     cooldown_days: int = 3
 
+    def __post_init__(self) -> None:
+        if not 0 < self.max_symbol_allocation <= 1:
+            raise ValueError("max symbol allocation must be > 0 and <= 1")
+        if not 0 < self.max_total_allocation <= 1:
+            raise ValueError("max total allocation must be > 0 and <= 1")
+        if self.max_symbol_allocation > self.max_total_allocation:
+            raise ValueError("max symbol allocation cannot exceed max total allocation")
+        if self.stop_loss_pct <= 0:
+            raise ValueError("stop loss percent must be positive")
+        if self.take_profit_pct <= 0:
+            raise ValueError("take profit percent must be positive")
+        if self.cooldown_days < 0:
+            raise ValueError("cooldown days cannot be negative")
+
 
 @dataclass(frozen=True)
 class AppConfig:
     mode: str = "backtest"
-    symbols: list[str] = field(default_factory=lambda: list(DEFAULT_SYMBOLS))
+    symbols: tuple[str, ...] = field(default_factory=lambda: DEFAULT_SYMBOLS)
     starting_cash: float = 100_000.0
     strategy: StrategyConfig = field(default_factory=StrategyConfig)
     risk: RiskConfig = field(default_factory=RiskConfig)
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "symbols", tuple(self.symbols))
         if self.mode == "live":
             raise ValueError("Live trading is not supported in the first version")
         if self.mode not in {"backtest", "paper"}:

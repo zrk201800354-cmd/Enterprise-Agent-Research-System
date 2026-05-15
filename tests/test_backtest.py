@@ -13,6 +13,16 @@ class FixedSignalStrategy:
         return Signal(symbol=symbol, target_allocation=allocation, reason=f"target {allocation}")
 
 
+class SymbolSignalStrategy:
+    def __init__(self, allocations_by_symbol):
+        self.allocations_by_symbol = allocations_by_symbol
+
+    def generate_signal(self, symbol, bars, existing_position):
+        index = len(bars) - 1
+        allocation = self.allocations_by_symbol[symbol][index]
+        return Signal(symbol=symbol, target_allocation=allocation, reason=f"{symbol} target {allocation}")
+
+
 def make_bars(closes):
     return [
         Bar(date=f"2026-01-{index + 1:02d}", open=close, high=close + 1, low=close - 1, close=close, volume=1000)
@@ -43,6 +53,32 @@ def test_backtest_buys_and_exits_using_approved_allocations():
     assert result.final_equity == 1100.0
     assert isinstance(result.metrics, BacktestMetrics)
     assert result.metrics.trade_count == 2
+
+
+def test_backtest_risk_uses_actual_allocations_after_price_drift():
+    config = AppConfig(
+        symbols=["SPY", "QQQ"],
+        starting_cash=1000.0,
+        risk=RiskConfig(max_symbol_allocation=0.5, max_total_allocation=0.8),
+    )
+    strategy = SymbolSignalStrategy(
+        {
+            "SPY": [0.5, 0.5],
+            "QQQ": [0.0, 0.3],
+        }
+    )
+    backtester = Backtester(config=config, strategy=strategy)
+
+    result = backtester.run(
+        {
+            "SPY": make_bars([10.0, 20.0]),
+            "QQQ": make_bars([10.0, 10.0]),
+        }
+    )
+
+    assert [trade for trade in result.trades if trade.symbol == "QQQ" and trade.side == "BUY"] == []
+    final_spy_exposure = 50 * 20.0 / result.final_equity
+    assert final_spy_exposure <= config.risk.max_total_allocation
 
 
 def test_backtest_rejects_mismatched_symbol_data():

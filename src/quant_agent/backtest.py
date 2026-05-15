@@ -54,7 +54,8 @@ class Backtester:
             for symbol in self.config.symbols:
                 bars = bars_by_symbol[symbol][: index + 1]
                 signal = self.strategy.generate_signal(symbol, bars, positions.get(symbol))
-                decision = self.risk.approve(signal, target_allocations, positions)
+                allocations = self._allocations(positions, latest_prices, equity)
+                decision = self.risk.approve(signal, allocations, positions)
                 if not decision.approved:
                     continue
 
@@ -86,6 +87,7 @@ class Backtester:
                         target_allocations[symbol] = decision.target_allocation
 
                 equity = self._equity(cash, positions, latest_prices)
+                allocations = self._allocations(positions, latest_prices, equity)
 
             end_equity = self._equity(cash, positions, latest_prices)
             equity_curve.append(end_equity)
@@ -155,6 +157,11 @@ class Backtester:
 
     def _equity(self, cash: float, positions: dict[str, Position], prices: dict[str, float]) -> float:
         return cash + sum(position.quantity * prices[symbol] for symbol, position in positions.items())
+
+    def _allocations(self, positions: dict[str, Position], prices: dict[str, float], equity: float) -> dict[str, float]:
+        if equity <= 0:
+            return {}
+        return {symbol: position.quantity * prices[symbol] / equity for symbol, position in positions.items()}
 
     def _metrics(self, equity_curve: list[float], trades: list[Trade], invested_days: int) -> BacktestMetrics:
         if not equity_curve:

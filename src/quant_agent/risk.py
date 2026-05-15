@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from quant_agent.config import RiskConfig
@@ -25,11 +26,18 @@ class RiskManager:
         current_allocations: dict[str, float],
         positions: dict[str, Position],
     ) -> RiskDecision:
+        if not math.isfinite(signal.target_allocation) or signal.target_allocation < 0:
+            return RiskDecision(False, signal.symbol, 0.0, "Rejected invalid allocation")
+
+        if any(not math.isfinite(allocation) or allocation < 0 for allocation in current_allocations.values()):
+            return RiskDecision(False, signal.symbol, 0.0, "Rejected invalid allocation")
+
+        has_existing_exposure = signal.symbol in positions or signal.symbol in current_allocations
+        if signal.target_allocation == 0.0 and (signal.symbol in self.allowed_symbols or has_existing_exposure):
+            return RiskDecision(True, signal.symbol, 0.0, signal.reason)
+
         if signal.symbol not in self.allowed_symbols:
             return RiskDecision(False, signal.symbol, 0.0, "Rejected unknown symbol")
-
-        if signal.target_allocation == 0.0:
-            return RiskDecision(True, signal.symbol, 0.0, signal.reason)
 
         if signal.target_allocation > self.config.max_symbol_allocation:
             return RiskDecision(False, signal.symbol, 0.0, "Rejected symbol allocation above limit")

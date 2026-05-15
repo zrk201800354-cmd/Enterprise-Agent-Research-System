@@ -40,6 +40,12 @@ def test_rsi_returns_high_value_after_consistent_gains():
     assert value == 100.0
 
 
+def test_rsi_returns_neutral_value_after_flat_prices():
+    value = relative_strength_index([10, 10, 10, 10], period=3)
+
+    assert value == 50.0
+
+
 @pytest.mark.parametrize("period", [0, -1])
 def test_rsi_rejects_nonpositive_period(period):
     with pytest.raises(ValueError, match="Period must be positive"):
@@ -83,6 +89,15 @@ def test_strategy_blocks_new_entry_when_rsi_is_too_high():
 
     assert signal.target_allocation == 0.0
     assert "RSI" in signal.reason
+
+
+def test_strategy_allows_entry_when_positive_trend_has_flat_neutral_rsi():
+    config = StrategyConfig(short_window=3, long_window=5, rsi_period=3, rsi_entry_ceiling=70.0)
+    strategy = TrendRsiStrategy(config)
+
+    signal = strategy.generate_signal("SPY", bars_from_closes([10, 10, 10, 12, 12, 12]), existing_position=None)
+
+    assert signal.target_allocation == 0.20
 
 
 def test_strategy_holds_existing_position_when_trend_remains_positive():

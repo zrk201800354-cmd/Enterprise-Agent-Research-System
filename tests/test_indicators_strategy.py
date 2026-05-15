@@ -46,6 +46,12 @@ def test_rsi_returns_neutral_value_after_flat_prices():
     assert value == 50.0
 
 
+def test_rsi_keeps_gain_into_flat_plateau_overbought():
+    value = relative_strength_index([10, 10, 10, 12, 12, 12], period=3)
+
+    assert value == 100.0
+
+
 @pytest.mark.parametrize("period", [0, -1])
 def test_rsi_rejects_nonpositive_period(period):
     with pytest.raises(ValueError, match="Period must be positive"):
@@ -95,7 +101,7 @@ def test_strategy_allows_entry_when_positive_trend_has_flat_neutral_rsi():
     config = StrategyConfig(short_window=3, long_window=5, rsi_period=3, rsi_entry_ceiling=70.0)
     strategy = TrendRsiStrategy(config)
 
-    signal = strategy.generate_signal("SPY", bars_from_closes([10, 10, 10, 12, 12, 12]), existing_position=None)
+    signal = strategy.generate_signal("SPY", bars_from_closes([10, 10, 12, 12, 12, 12]), existing_position=None)
 
     assert signal.target_allocation == 0.20
 

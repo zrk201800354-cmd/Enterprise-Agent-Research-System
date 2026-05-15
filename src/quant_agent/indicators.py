@@ -22,7 +22,7 @@ def relative_strength_index(values: list[float], period: int) -> float | None:
     average_gain = sum(gains) / period
     average_loss = sum(losses) / period
 
-    if average_loss == 0 and (average_gain == 0 or len(set(values[-period:])) == 1):
+    if average_loss == 0 and average_gain == 0:
         return 50.0
     if average_loss == 0:
         return 100.0

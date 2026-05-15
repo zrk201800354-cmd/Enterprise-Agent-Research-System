@@ -164,6 +164,19 @@ def test_risk_rejects_nonfinite_signal_target_allocation(target_allocation):
     assert "invalid allocation" in result.reason
 
 
+def test_risk_rejects_negative_signal_target_allocation():
+    manager = RiskManager(RiskConfig(), allowed_symbols=["SPY"])
+
+    result = manager.approve(
+        signal=_unsafe_signal(-0.1),
+        current_allocations={},
+        positions={},
+    )
+
+    assert result.approved is False
+    assert "invalid allocation" in result.reason
+
+
 @pytest.mark.parametrize("allocation", [math.nan, math.inf, -0.1])
 def test_risk_rejects_invalid_current_allocation_values(allocation):
     manager = RiskManager(RiskConfig(), allowed_symbols=["SPY", "QQQ"])

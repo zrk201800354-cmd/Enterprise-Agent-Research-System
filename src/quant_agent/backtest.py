@@ -39,13 +39,14 @@ class Backtester:
     def run(self, bars_by_symbol: dict[str, list[Bar]]) -> BacktestResult:
         self._validate_bars(bars_by_symbol)
 
-        bar_count = min(len(bars_by_symbol[symbol]) for symbol in self.config.symbols)
+        bar_count = len(bars_by_symbol[self.config.symbols[0]])
         cash = self.config.starting_cash
         positions: dict[str, Position] = {}
-        target_allocations: dict[str, float] = {}
         trades: list[Trade] = []
         equity_curve: list[float] = []
         invested_days = 0
+        sell_count = 0
+        winning_sell_count = 0
 
         for index in range(bar_count):
             latest_prices = {symbol: bars_by_symbol[symbol][index].close for symbol in self.config.symbols}
@@ -59,10 +60,6 @@ class Backtester:
                 if not decision.approved:
                     continue
 
-                previous_target = target_allocations.get(symbol, 0.0)
-                if decision.target_allocation == previous_target:
-                    continue
-
                 current_position = positions.get(symbol)
                 price = latest_prices[symbol]
                 target_value = decision.target_allocation * equity
@@ -74,27 +71,23 @@ class Backtester:
                     if quantity == 0:
                         continue
                     cash = self._buy(cash, positions, trades, bars[-1], symbol, quantity, price, decision.reason)
-                    target_allocations[symbol] = decision.target_allocation
                 elif current_position is not None:
                     quantity = current_position.quantity if decision.target_allocation == 0.0 else int(abs(delta_value) // price)
                     if quantity == 0:
-                        target_allocations[symbol] = decision.target_allocation
                         continue
+                    if price > current_position.average_price:
+                        winning_sell_count += 1
+                    sell_count += 1
                     cash = self._sell(cash, positions, trades, bars[-1], symbol, quantity, price, decision.reason)
-                    if decision.target_allocation == 0.0:
-                        target_allocations.pop(symbol, None)
-                    else:
-                        target_allocations[symbol] = decision.target_allocation
 
                 equity = self._equity(cash, positions, latest_prices)
-                allocations = self._allocations(positions, latest_prices, equity)
 
             end_equity = self._equity(cash, positions, latest_prices)
             equity_curve.append(end_equity)
             if positions:
                 invested_days += 1
 
-        metrics = self._metrics(equity_curve, trades, invested_days)
+        metrics = self._metrics(equity_curve, trades, invested_days, sell_count, winning_sell_count)
         return BacktestResult(
             initial_cash=self.config.starting_cash,
             final_equity=equity_curve[-1] if equity_curve else self.config.starting_cash,
@@ -107,6 +100,21 @@ class Backtester:
         for symbol in self.config.symbols:
             if symbol not in bars_by_symbol or not bars_by_symbol[symbol]:
                 raise ValueError(f"Missing bars for {symbol}")
+
+        expected_count = len(bars_by_symbol[self.config.symbols[0]])
+        for symbol in self.config.symbols:
+            if len(bars_by_symbol[symbol]) != expected_count:
+                raise ValueError("All symbols must have same number of bars")
+
+        baseline_symbol = self.config.symbols[0]
+        for index, expected_bar in enumerate(bars_by_symbol[baseline_symbol]):
+            for symbol in self.config.symbols[1:]:
+                bar = bars_by_symbol[symbol][index]
+                if bar.date != expected_bar.date:
+                    raise ValueError(
+                        f"Mismatched bar date for {symbol} at index {index}: "
+                        f"expected {expected_bar.date}, got {bar.date}"
+                    )
 
     def _buy(
         self,
@@ -163,7 +171,14 @@ class Backtester:
             return {}
         return {symbol: position.quantity * prices[symbol] / equity for symbol, position in positions.items()}
 
-    def _metrics(self, equity_curve: list[float], trades: list[Trade], invested_days: int) -> BacktestMetrics:
+    def _metrics(
+        self,
+        equity_curve: list[float],
+        trades: list[Trade],
+        invested_days: int,
+        sell_count: int,
+        winning_sell_count: int,
+    ) -> BacktestMetrics:
         if not equity_curve:
             return BacktestMetrics(0.0, 0.0, 0.0, 0.0, 0, 0.0)
 
@@ -171,11 +186,12 @@ class Backtester:
         years = max(len(equity_curve) / 252.0, 1 / 252.0)
         annualized_return = (1.0 + total_return) ** (1.0 / years) - 1.0 if total_return > -1.0 else -1.0
         exposure = invested_days / len(equity_curve)
+        win_rate = winning_sell_count / sell_count if sell_count else 0.0
         return BacktestMetrics(
             total_return=total_return,
             annualized_return=annualized_return,
             max_drawdown=calculate_max_drawdown(equity_curve),
-            win_rate=0.0,
+            win_rate=win_rate,
             trade_count=len(trades),
             exposure=exposure,
         )

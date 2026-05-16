@@ -1,3 +1,5 @@
+import pytest
+
 from quant_agent.backtest import Backtester, calculate_max_drawdown
 from quant_agent.config import AppConfig, RiskConfig, StrategyConfig
 from quant_agent.models import BacktestMetrics, Bar, Signal
@@ -30,6 +32,13 @@ def make_bars(closes):
     ]
 
 
+def make_dated_bars(dates):
+    return [
+        Bar(date=date, open=10.0, high=11.0, low=9.0, close=10.0, volume=1000)
+        for date in dates
+    ]
+
+
 def test_max_drawdown_uses_peak_to_trough_decline():
     assert calculate_max_drawdown([100.0, 120.0, 90.0, 110.0]) == -0.25
 
@@ -46,13 +55,34 @@ def test_backtest_buys_and_exits_using_approved_allocations():
 
     result = backtester.run({"SPY": make_bars([10.0, 10.0, 12.0, 12.0])})
 
-    assert len(result.trades) == 2
+    assert len(result.trades) == 3
     assert result.trades[0].side == "BUY"
     assert result.trades[0].quantity == 50
     assert result.trades[1].side == "SELL"
+    assert result.trades[2].side == "SELL"
     assert result.final_equity == 1100.0
     assert isinstance(result.metrics, BacktestMetrics)
-    assert result.metrics.trade_count == 2
+    assert result.metrics.trade_count == 3
+    assert result.metrics.win_rate == 1.0
+
+
+def test_backtest_rebalances_unchanged_target_after_price_drift():
+    config = AppConfig(
+        symbols=["SPY"],
+        starting_cash=1000.0,
+        risk=RiskConfig(max_symbol_allocation=0.5, max_total_allocation=0.8),
+    )
+    strategy = FixedSignalStrategy([0.5, 0.5])
+    backtester = Backtester(config=config, strategy=strategy)
+
+    result = backtester.run({"SPY": make_bars([10.0, 20.0])})
+
+    assert [trade for trade in result.trades if trade.side == "SELL"]
+    final_allocation = sum(
+        trade.quantity if trade.side == "BUY" else -trade.quantity for trade in result.trades
+    ) * 20.0 / result.final_equity
+    one_share_allocation = 20.0 / result.final_equity
+    assert final_allocation <= config.risk.max_symbol_allocation + one_share_allocation
 
 
 def test_backtest_risk_uses_actual_allocations_after_price_drift():
@@ -91,3 +121,29 @@ def test_backtest_rejects_mismatched_symbol_data():
         assert "Missing bars for SPY" in str(error)
     else:
         raise AssertionError("Expected missing bars error")
+
+
+def test_backtest_rejects_mismatched_symbol_bar_lengths():
+    config = AppConfig(symbols=["SPY", "QQQ"])
+    backtester = Backtester(config=config)
+
+    with pytest.raises(ValueError, match="same number of bars"):
+        backtester.run(
+            {
+                "SPY": make_bars([10.0, 11.0]),
+                "QQQ": make_bars([10.0]),
+            }
+        )
+
+
+def test_backtest_rejects_mismatched_symbol_bar_dates():
+    config = AppConfig(symbols=["SPY", "QQQ"])
+    backtester = Backtester(config=config)
+
+    with pytest.raises(ValueError, match="Mismatched bar date for QQQ at index 1"):
+        backtester.run(
+            {
+                "SPY": make_dated_bars(["2026-01-01", "2026-01-02"]),
+                "QQQ": make_dated_bars(["2026-01-01", "2026-01-03"]),
+            }
+        )

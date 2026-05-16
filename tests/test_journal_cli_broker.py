@@ -7,7 +7,12 @@ import sys
 import pytest
 
 from quant_agent.backtest import BacktestResult
-from quant_agent.broker import PaperBrokerSettings, reject_live_mode
+from quant_agent.broker import (
+    AlpacaPaperBroker,
+    BrokerOrder,
+    PaperBrokerSettings,
+    reject_live_mode,
+)
 from quant_agent.journal import write_backtest_summary
 from quant_agent.models import BacktestMetrics
 from quant_agent.sample_data import load_sample_bars
@@ -69,6 +74,57 @@ def test_paper_broker_settings_read_env_keys(monkeypatch):
     assert settings.base_url == "https://paper-api.alpaca.markets"
 
 
+def test_broker_order_rejects_unsafe_values():
+    with pytest.raises(ValueError, match="symbol"):
+        BrokerOrder(symbol="", qty=1, side="buy")
+    with pytest.raises(ValueError, match="qty"):
+        BrokerOrder(symbol="SPY", qty=0, side="buy")
+    with pytest.raises(ValueError, match="side"):
+        BrokerOrder(symbol="SPY", qty=1, side="short")
+
+
+def test_broker_order_payload_uses_alpaca_market_day_shape():
+    order = BrokerOrder(symbol="SPY", qty=2, side="buy")
+
+    assert order.to_payload() == {
+        "symbol": "SPY",
+        "qty": "2",
+        "side": "buy",
+        "type": "market",
+        "time_in_force": "day",
+    }
+
+
+def test_alpaca_paper_broker_preview_does_not_call_transport():
+    calls = []
+    broker = AlpacaPaperBroker(PaperBrokerSettings("key", "secret"), transport=lambda request: calls.append(request))
+
+    preview = broker.preview_order(BrokerOrder(symbol="SPY", qty=1, side="buy"))
+
+    assert preview["endpoint"] == "https://paper-api.alpaca.markets/v2/orders"
+    assert preview["payload"]["symbol"] == "SPY"
+    assert calls == []
+
+
+def test_alpaca_paper_broker_submit_order_posts_expected_request():
+    calls = []
+
+    def fake_transport(request):
+        calls.append(request)
+        return {"id": "paper-order-1", "status": "accepted"}
+
+    broker = AlpacaPaperBroker(PaperBrokerSettings("key", "secret"), transport=fake_transport)
+
+    response = broker.submit_order(BrokerOrder(symbol="SPY", qty=1, side="buy"))
+
+    assert response == {"id": "paper-order-1", "status": "accepted"}
+    assert calls[0]["method"] == "POST"
+    assert calls[0]["url"] == "https://paper-api.alpaca.markets/v2/orders"
+    assert calls[0]["headers"]["APCA-API-KEY-ID"] == "key"
+    assert calls[0]["headers"]["APCA-API-SECRET-KEY"] == "secret"
+    assert calls[0]["json"]["time_in_force"] == "day"
+
+
 def test_live_mode_is_explicitly_rejected():
     with pytest.raises(RuntimeError, match="Live trading is not implemented"):
         reject_live_mode()
@@ -107,3 +163,20 @@ def test_cli_paper_fails_without_credentials():
 
     assert completed.returncode == 2
     assert "ALPACA_API_KEY" in completed.stderr
+
+
+def test_cli_paper_preview_builds_order_without_credentials():
+    env = os.environ.copy()
+    env["PYTHONPATH"] = SRC_PATH
+
+    completed = subprocess.run(
+        [sys.executable, "-m", "quant_agent", "paper-preview", "--symbol", "SPY", "--qty", "1", "--side", "buy"],
+        text=True,
+        capture_output=True,
+        env=env,
+        check=False,
+    )
+
+    assert completed.returncode == 0
+    assert "Paper order preview" in completed.stdout
+    assert '"symbol": "SPY"' in completed.stdout

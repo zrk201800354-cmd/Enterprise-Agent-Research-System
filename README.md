@@ -44,3 +44,23 @@ $env:ALPACA_SECRET_KEY = "your-paper-secret"
 ```
 
 Paper mode checks `ALPACA_API_KEY` and `ALPACA_SECRET_KEY`. This milestone does not place paper orders yet.
+
+## Paper Order Preview
+
+```powershell
+$env:PYTHONPATH = "src"
+& "C:\Users\Ethan\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" -m quant_agent paper-preview --symbol SPY --qty 1 --side buy
+```
+
+Preview does not require credentials and does not call the broker.
+
+## Submit Paper Order
+
+```powershell
+$env:PYTHONPATH = "src"
+$env:ALPACA_API_KEY = "your-paper-key"
+$env:ALPACA_SECRET_KEY = "your-paper-secret"
+& "C:\Users\Ethan\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" -m quant_agent paper-submit --symbol SPY --qty 1 --side buy
+```
+
+`paper-submit` uses Alpaca's paper trading endpoint. There is still no live trading command.

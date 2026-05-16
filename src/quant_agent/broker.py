@@ -4,7 +4,7 @@ import json
 import os
 from dataclasses import dataclass
 from typing import Any, Callable
-from urllib import request
+from urllib import parse, request
 
 
 @dataclass(frozen=True)
@@ -54,7 +54,11 @@ class BrokerOrder:
         }
 
 
-Transport = Callable[[dict[str, Any]], dict[str, Any]]
+Transport = Callable[[dict[str, Any]], dict[str, Any] | list[dict[str, Any]]]
+
+
+class DuplicateOrderError(RuntimeError):
+    pass
 
 
 class AlpacaPaperBroker:
@@ -78,15 +82,58 @@ class AlpacaPaperBroker:
             {
                 "method": "POST",
                 "url": self.orders_url,
-                "headers": {
-                    "APCA-API-KEY-ID": self.settings.api_key,
-                    "APCA-API-SECRET-KEY": self.settings.secret_key,
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                },
+                "headers": self._headers(),
                 "json": order.to_payload(),
             }
         )
+
+    def submit_order_if_no_duplicate(self, order: BrokerOrder) -> dict[str, Any]:
+        for open_order in self.list_open_orders():
+            if _same_order_intent(open_order, order):
+                raise DuplicateOrderError(f"Blocked duplicate open order for {order.symbol} {order.side}")
+        return self.submit_order(order)
+
+    def get_account(self) -> dict[str, Any]:
+        return self.transport(
+            {
+                "method": "GET",
+                "url": f"{self.settings.base_url}/v2/account",
+                "headers": self._headers(),
+            }
+        )
+
+    def list_positions(self) -> list[dict[str, Any]]:
+        response = self.transport(
+            {
+                "method": "GET",
+                "url": f"{self.settings.base_url}/v2/positions",
+                "headers": self._headers(),
+            }
+        )
+        if not isinstance(response, list):
+            raise RuntimeError("Positions response must be a list")
+        return response
+
+    def list_open_orders(self) -> list[dict[str, Any]]:
+        response = self.transport(
+            {
+                "method": "GET",
+                "url": self.orders_url,
+                "headers": self._headers(),
+                "params": {"status": "open"},
+            }
+        )
+        if not isinstance(response, list):
+            raise RuntimeError("Orders response must be a list")
+        return response
+
+    def _headers(self) -> dict[str, str]:
+        return {
+            "APCA-API-KEY-ID": self.settings.api_key,
+            "APCA-API-SECRET-KEY": self.settings.secret_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
 
 
 def reject_live_mode() -> None:
@@ -99,10 +146,24 @@ def _format_quantity(qty: float) -> str:
     return str(qty)
 
 
-def _urllib_transport(request_data: dict[str, Any]) -> dict[str, Any]:
-    body = json.dumps(request_data["json"]).encode("utf-8")
+def _same_order_intent(open_order: dict[str, Any], order: BrokerOrder) -> bool:
+    return (
+        str(open_order.get("symbol", "")).upper() == order.symbol.upper()
+        and str(open_order.get("side", "")).lower() == order.side
+        and str(open_order.get("status", "")).lower() in {"new", "accepted", "pending_new", "partially_filled"}
+    )
+
+
+def _urllib_transport(request_data: dict[str, Any]) -> dict[str, Any] | list[dict[str, Any]]:
+    url = request_data["url"]
+    params = request_data.get("params") or {}
+    if params:
+        url = f"{url}?{parse.urlencode(params)}"
+    body = None
+    if "json" in request_data:
+        body = json.dumps(request_data["json"]).encode("utf-8")
     req = request.Request(
-        request_data["url"],
+        url,
         data=body,
         headers=request_data["headers"],
         method=request_data["method"],

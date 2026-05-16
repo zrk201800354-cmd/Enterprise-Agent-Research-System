@@ -6,7 +6,13 @@ import os
 import sys
 
 from quant_agent.backtest import Backtester
-from quant_agent.broker import AlpacaPaperBroker, BrokerOrder, PaperBrokerSettings, reject_live_mode
+from quant_agent.broker import (
+    AlpacaPaperBroker,
+    BrokerOrder,
+    DuplicateOrderError,
+    PaperBrokerSettings,
+    reject_live_mode,
+)
 from quant_agent.config import AppConfig, load_default_config
 from quant_agent.journal import write_backtest_summary, write_optimization_summary
 from quant_agent.market_clock import AlpacaClockClient, TradingPreflight
@@ -77,8 +83,8 @@ def main(argv: list[str] | None = None) -> int:
         try:
             settings = PaperBrokerSettings.from_environment()
             TradingPreflight(lambda: AlpacaClockClient(settings).get_clock()).assert_can_submit_order()
-            response = AlpacaPaperBroker(settings).submit_order(BrokerOrder(args.symbol, args.qty, args.side))
-        except RuntimeError as error:
+            response = AlpacaPaperBroker(settings).submit_order_if_no_duplicate(BrokerOrder(args.symbol, args.qty, args.side))
+        except (DuplicateOrderError, RuntimeError) as error:
             print(str(error), file=sys.stderr)
             return 2
         print(json.dumps(response, indent=2))

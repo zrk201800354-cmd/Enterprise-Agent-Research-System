@@ -63,7 +63,7 @@ $env:ALPACA_SECRET_KEY = "your-paper-secret"
 & "C:\Users\Ethan\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" -m quant_agent paper-submit --symbol SPY --qty 1 --side buy
 ```
 
-`paper-submit` uses Alpaca's paper trading endpoint and checks Alpaca's market clock before submitting. There is still no live trading command.
+`paper-submit` uses Alpaca's paper trading endpoint, checks Alpaca's market clock before submitting, and blocks a new order when the same symbol and side already has an open paper order. There is still no live trading command.
 
 ## Paper Market Clock
 
@@ -75,3 +75,18 @@ $env:ALPACA_SECRET_KEY = "your-paper-secret"
 ```
 
 The clock command reads Alpaca's paper trading clock and reports whether the regular market is open.
+
+## Market Data Preview
+
+```powershell
+$env:PYTHONPATH = "src"
+$env:ALPACA_API_KEY = "your-paper-key"
+$env:ALPACA_SECRET_KEY = "your-paper-secret"
+& "C:\Users\Ethan\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" -m quant_agent data-preview --symbol SPY --timeframe 1Min --start 2025-01-01T14:30:00Z --end 2025-01-01T15:30:00Z
+```
+
+Supported bars are `1Min`, `5Min`, `15Min`, `30Min`, `1Hour`, and `1Day`. The current strategy still defaults to daily bars for backtests; minute bars are available for preview and the next paper-trading loop.
+
+## Paper Account Sync
+
+The broker adapter can read the Alpaca paper account, current positions, and open orders before submitting a paper order. This lets the next dashboard show buying power, holdings, pending orders, and order-blocking reasons.

@@ -63,4 +63,15 @@ $env:ALPACA_SECRET_KEY = "your-paper-secret"
 & "C:\Users\Ethan\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" -m quant_agent paper-submit --symbol SPY --qty 1 --side buy
 ```
 
-`paper-submit` uses Alpaca's paper trading endpoint. There is still no live trading command.
+`paper-submit` uses Alpaca's paper trading endpoint and checks Alpaca's market clock before submitting. There is still no live trading command.
+
+## Paper Market Clock
+
+```powershell
+$env:PYTHONPATH = "src"
+$env:ALPACA_API_KEY = "your-paper-key"
+$env:ALPACA_SECRET_KEY = "your-paper-secret"
+& "C:\Users\Ethan\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" -m quant_agent paper-clock
+```
+
+The clock command reads Alpaca's paper trading clock and reports whether the regular market is open.

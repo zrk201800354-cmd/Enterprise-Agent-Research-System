@@ -9,13 +9,17 @@ from quant_agent.backtest import Backtester
 from quant_agent.broker import AlpacaPaperBroker, BrokerOrder, PaperBrokerSettings, reject_live_mode
 from quant_agent.config import AppConfig, load_default_config
 from quant_agent.journal import write_backtest_summary, write_optimization_summary
+from quant_agent.market_clock import AlpacaClockClient, TradingPreflight
 from quant_agent.optimizer import optimize_strategy
 from quant_agent.sample_data import load_sample_bars
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="quant_agent")
-    parser.add_argument("command", choices=["backtest", "optimize", "paper", "paper-preview", "paper-submit"])
+    parser.add_argument(
+        "command",
+        choices=["backtest", "optimize", "paper", "paper-preview", "paper-submit", "paper-clock"],
+    )
     parser.add_argument("--symbol", default="SPY")
     parser.add_argument("--qty", type=float, default=1.0)
     parser.add_argument("--side", choices=["buy", "sell"], default="buy")
@@ -60,11 +64,22 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "paper-submit":
         try:
             settings = PaperBrokerSettings.from_environment()
+            TradingPreflight(lambda: AlpacaClockClient(settings).get_clock()).assert_can_submit_order()
             response = AlpacaPaperBroker(settings).submit_order(BrokerOrder(args.symbol, args.qty, args.side))
         except RuntimeError as error:
             print(str(error), file=sys.stderr)
             return 2
         print(json.dumps(response, indent=2))
+        return 0
+
+    if args.command == "paper-clock":
+        try:
+            settings = PaperBrokerSettings.from_environment()
+            clock = AlpacaClockClient(settings).get_clock()
+        except RuntimeError as error:
+            print(str(error), file=sys.stderr)
+            return 2
+        print(json.dumps(clock.__dict__, indent=2))
         return 0
 
     reject_live_mode()

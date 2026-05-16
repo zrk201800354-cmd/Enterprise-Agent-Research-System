@@ -14,13 +14,15 @@ def _make_symbol_bars(offset: float) -> list[Bar]:
     price = 100.0 + offset
     current_date = date(2025, 1, 2)
 
-    for index in range(80):
-        if index < 30:
+    for index in range(160):
+        if index < 40:
             price += 0.15
-        elif index < 60:
+        elif index < 95:
             price += 0.45
-        else:
+        elif index < 112:
             price -= 0.20
+        else:
+            price += 0.30
 
         rounded = round(price, 2)
         bars.append(

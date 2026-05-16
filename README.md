@@ -25,6 +25,15 @@ $env:PYTHONPATH = "src"
 
 Outputs are written to `logs/backtest-summary.md` and `logs/backtest-metrics.json` unless `QUANT_AGENT_LOG_DIR` is set.
 
+## Optimize Strategy
+
+```powershell
+$env:PYTHONPATH = "src"
+& "C:\Users\Ethan\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" -m quant_agent optimize
+```
+
+Optimization uses a train/test split and writes `logs/optimization-summary.md` plus `logs/optimization-results.json`.
+
 ## Paper Mode
 
 ```powershell

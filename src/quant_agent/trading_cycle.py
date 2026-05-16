@@ -50,6 +50,7 @@ class PaperTradingCycle:
     def run(self, start: str, end: str, timeframe: str = "1Min", submit_orders: bool = False) -> PaperCycleResult:
         account = self.broker.get_account()
         equity = _parse_positive_float(account.get("equity"), "account equity")
+        remaining_buying_power = _parse_nonnegative_float(account.get("buying_power", 0.0), "buying power")
         raw_positions = self.broker.list_positions()
         positions = _positions_by_symbol(raw_positions)
         current_allocations = _allocations_by_symbol(raw_positions, equity)
@@ -61,6 +62,7 @@ class PaperTradingCycle:
         )
 
         actions: list[PaperTradeAction] = []
+        planned_order_count = 0
         for symbol in self.config.symbols:
             bars = bars_by_symbol.get(symbol, [])
             if not bars:
@@ -81,6 +83,13 @@ class PaperTradingCycle:
             signal = self.strategy.generate_signal(symbol, bars, positions.get(symbol))
             decision = self.risk_manager.approve(signal, current_allocations, positions)
             action = _build_action(symbol, bars[-1], positions.get(symbol), current_allocations, equity, signal, decision)
+            action, planned_order_count, remaining_buying_power = _apply_order_safeguards(
+                action,
+                self.config.risk.max_order_notional,
+                self.config.risk.max_orders_per_cycle,
+                planned_order_count,
+                remaining_buying_power,
+            )
 
             if submit_orders and action.status == "planned":
                 response = self.broker.submit_order_if_no_duplicate(BrokerOrder(action.symbol, action.qty, action.side))
@@ -149,6 +158,56 @@ def _build_action(
     )
 
 
+def _apply_order_safeguards(
+    action: PaperTradeAction,
+    max_order_notional: float,
+    max_orders_per_cycle: int,
+    planned_order_count: int,
+    remaining_buying_power: float,
+) -> tuple[PaperTradeAction, int, float]:
+    if action.status != "planned":
+        return action, planned_order_count, remaining_buying_power
+
+    if planned_order_count >= max_orders_per_cycle:
+        return (
+            _blocked_action(action, f"Rejected max orders per cycle: {max_orders_per_cycle}"),
+            planned_order_count,
+            remaining_buying_power,
+        )
+
+    notional = action.qty * action.estimated_price
+    if notional > max_order_notional:
+        return (
+            _blocked_action(action, f"Rejected order notional above limit: {notional:.2f} > {max_order_notional:.2f}"),
+            planned_order_count,
+            remaining_buying_power,
+        )
+
+    if action.side == "buy":
+        if notional > remaining_buying_power:
+            return (
+                _blocked_action(action, f"Rejected insufficient buying power: {notional:.2f} > {remaining_buying_power:.2f}"),
+                planned_order_count,
+                remaining_buying_power,
+            )
+        remaining_buying_power -= notional
+
+    return action, planned_order_count + 1, remaining_buying_power
+
+
+def _blocked_action(action: PaperTradeAction, reason: str) -> PaperTradeAction:
+    return PaperTradeAction(
+        symbol=action.symbol,
+        side="hold",
+        qty=0,
+        status="skipped",
+        current_allocation=action.current_allocation,
+        target_allocation=action.target_allocation,
+        estimated_price=action.estimated_price,
+        reason=reason,
+    )
+
+
 def _positions_by_symbol(raw_positions: list[dict[str, Any]]) -> dict[str, Position]:
     positions: dict[str, Position] = {}
     for raw in raw_positions:
@@ -176,4 +235,11 @@ def _parse_positive_float(value: Any, label: str) -> float:
     parsed = float(value)
     if parsed <= 0:
         raise RuntimeError(f"{label} must be positive")
+    return parsed
+
+
+def _parse_nonnegative_float(value: Any, label: str) -> float:
+    parsed = float(value)
+    if parsed < 0:
+        raise RuntimeError(f"{label} cannot be negative")
     return parsed

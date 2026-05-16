@@ -3,7 +3,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from quant_agent.config import AppConfig
+from quant_agent.config import AppConfig, RiskConfig
 from quant_agent.models import Bar, Signal
 from quant_agent.trading_cycle import PaperTradingCycle
 
@@ -21,12 +21,13 @@ class FakeStrategy:
 
 
 class FakeBroker:
-    def __init__(self, positions=None):
+    def __init__(self, positions=None, account=None):
         self.positions = positions or []
+        self.account = account or {"equity": "10000", "buying_power": "10000", "status": "ACTIVE"}
         self.submitted = []
 
     def get_account(self):
-        return {"equity": "10000", "buying_power": "10000", "status": "ACTIVE"}
+        return self.account
 
     def list_positions(self):
         return self.positions
@@ -114,6 +115,60 @@ def test_paper_trading_cycle_skips_when_market_data_is_missing():
 
     assert result.actions[0].status == "skipped"
     assert result.actions[0].reason == "No market data returned"
+
+
+def test_paper_trading_cycle_rejects_order_above_notional_limit():
+    cycle = PaperTradingCycle(
+        AppConfig(
+            mode="paper",
+            symbols=("SPY",),
+            risk=RiskConfig(max_order_notional=1_000.0),
+        ),
+        FakeBroker(),
+        FakeMarketData(),
+        strategy=FakeStrategy({"SPY": 0.20}),
+    )
+
+    result = cycle.run("2025-01-01", "2025-01-02")
+
+    assert result.actions[0].status == "skipped"
+    assert result.actions[0].qty == 0
+    assert "notional above limit" in result.actions[0].reason
+
+
+def test_paper_trading_cycle_rejects_buy_above_available_buying_power():
+    broker = FakeBroker(account={"equity": "10000", "buying_power": "500", "status": "ACTIVE"})
+    cycle = PaperTradingCycle(
+        AppConfig(mode="paper", symbols=("SPY",)),
+        broker,
+        FakeMarketData(),
+        strategy=FakeStrategy({"SPY": 0.20}),
+    )
+
+    result = cycle.run("2025-01-01", "2025-01-02", submit_orders=True)
+
+    assert result.actions[0].status == "skipped"
+    assert "insufficient buying power" in result.actions[0].reason
+    assert broker.submitted == []
+
+
+def test_paper_trading_cycle_limits_order_count_per_cycle():
+    cycle = PaperTradingCycle(
+        AppConfig(
+            mode="paper",
+            symbols=("SPY", "QQQ"),
+            risk=RiskConfig(max_orders_per_cycle=1),
+        ),
+        FakeBroker(),
+        FakeMarketData(),
+        strategy=FakeStrategy({"SPY": 0.20, "QQQ": 0.20}),
+    )
+
+    result = cycle.run("2025-01-01", "2025-01-02")
+
+    assert result.actions[0].status == "planned"
+    assert result.actions[1].status == "skipped"
+    assert "max orders per cycle" in result.actions[1].reason
 
 
 def test_cli_paper_cycle_fails_without_credentials():

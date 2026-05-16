@@ -18,6 +18,8 @@ class StrategyConfig:
 class RiskConfig:
     max_symbol_allocation: float = 0.20
     max_total_allocation: float = 0.80
+    max_order_notional: float = 25_000.0
+    max_orders_per_cycle: int = 3
     stop_loss_pct: float = 0.08
     take_profit_pct: float = 0.20
     cooldown_days: int = 3
@@ -29,6 +31,10 @@ class RiskConfig:
             raise ValueError("max total allocation must be > 0 and <= 1")
         if self.max_symbol_allocation > self.max_total_allocation:
             raise ValueError("max symbol allocation cannot exceed max total allocation")
+        if self.max_order_notional <= 0:
+            raise ValueError("max order notional must be positive")
+        if self.max_orders_per_cycle <= 0:
+            raise ValueError("max orders per cycle must be positive")
         if self.stop_loss_pct <= 0:
             raise ValueError("stop loss percent must be positive")
         if self.take_profit_pct <= 0:

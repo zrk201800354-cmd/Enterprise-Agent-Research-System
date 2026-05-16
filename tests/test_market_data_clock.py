@@ -52,6 +52,27 @@ def test_market_data_client_requests_daily_bars_and_parses_response():
     assert bars["SPY"][0].close == 101
 
 
+def test_market_data_client_supports_minute_timeframes():
+    calls = []
+
+    def fake_transport(request):
+        calls.append(request)
+        return {"bars": {"SPY": []}}
+
+    client = AlpacaMarketDataClient(MarketDataSettings("key", "secret"), transport=fake_transport)
+
+    client.fetch_bars(["SPY"], start="2025-01-01T14:30:00Z", end="2025-01-01T15:30:00Z", timeframe="1Min")
+
+    assert calls[0]["params"]["timeframe"] == "1Min"
+
+
+def test_market_data_client_rejects_unsupported_timeframes():
+    client = AlpacaMarketDataClient(MarketDataSettings("key", "secret"), transport=lambda request: {})
+
+    with pytest.raises(ValueError, match="Unsupported timeframe"):
+        client.fetch_bars(["SPY"], start="2025-01-01", end="2025-01-02", timeframe="1Sec")
+
+
 def test_market_data_client_follows_next_page_token():
     tokens = []
 
@@ -110,6 +131,37 @@ def test_cli_paper_clock_fails_without_credentials():
 
     completed = subprocess.run(
         [sys.executable, "-m", "quant_agent", "paper-clock"],
+        text=True,
+        capture_output=True,
+        env=env,
+        check=False,
+    )
+
+    assert completed.returncode == 2
+    assert "ALPACA_API_KEY" in completed.stderr
+
+
+def test_cli_data_preview_fails_without_credentials():
+    env = os.environ.copy()
+    env["PYTHONPATH"] = SRC_PATH
+    env.pop("ALPACA_API_KEY", None)
+    env.pop("ALPACA_SECRET_KEY", None)
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "quant_agent",
+            "data-preview",
+            "--symbol",
+            "SPY",
+            "--timeframe",
+            "1Min",
+            "--start",
+            "2025-01-01T14:30:00Z",
+            "--end",
+            "2025-01-01T15:30:00Z",
+        ],
         text=True,
         capture_output=True,
         env=env,

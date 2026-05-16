@@ -10,6 +10,7 @@ from quant_agent.models import Bar
 
 
 MarketDataTransport = Callable[[dict[str, Any]], dict[str, Any]]
+SUPPORTED_TIMEFRAMES = {"1Min", "5Min", "15Min", "30Min", "1Hour", "1Day"}
 
 
 @dataclass(frozen=True)
@@ -39,12 +40,24 @@ class AlpacaMarketDataClient:
         end: str,
         feed: str = "iex",
     ) -> dict[str, list[Bar]]:
+        return self.fetch_bars(symbols=symbols, start=start, end=end, timeframe="1Day", feed=feed)
+
+    def fetch_bars(
+        self,
+        symbols: list[str] | tuple[str, ...],
+        start: str,
+        end: str,
+        timeframe: str = "1Day",
+        feed: str = "iex",
+    ) -> dict[str, list[Bar]]:
         if not symbols:
             raise ValueError("symbols are required")
+        if timeframe not in SUPPORTED_TIMEFRAMES:
+            raise ValueError(f"Unsupported timeframe: {timeframe}")
         bars_by_symbol = {symbol: [] for symbol in symbols}
         params = {
             "symbols": ",".join(symbols),
-            "timeframe": "1Day",
+            "timeframe": timeframe,
             "start": start,
             "end": end,
             "feed": feed,

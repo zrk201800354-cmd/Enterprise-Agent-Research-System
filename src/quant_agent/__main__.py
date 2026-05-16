@@ -10,6 +10,7 @@ from quant_agent.broker import AlpacaPaperBroker, BrokerOrder, PaperBrokerSettin
 from quant_agent.config import AppConfig, load_default_config
 from quant_agent.journal import write_backtest_summary, write_optimization_summary
 from quant_agent.market_clock import AlpacaClockClient, TradingPreflight
+from quant_agent.market_data import AlpacaMarketDataClient, MarketDataSettings
 from quant_agent.optimizer import optimize_strategy
 from quant_agent.sample_data import load_sample_bars
 
@@ -18,11 +19,22 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="quant_agent")
     parser.add_argument(
         "command",
-        choices=["backtest", "optimize", "paper", "paper-preview", "paper-submit", "paper-clock"],
+        choices=[
+            "backtest",
+            "optimize",
+            "paper",
+            "paper-preview",
+            "paper-submit",
+            "paper-clock",
+            "data-preview",
+        ],
     )
     parser.add_argument("--symbol", default="SPY")
     parser.add_argument("--qty", type=float, default=1.0)
     parser.add_argument("--side", choices=["buy", "sell"], default="buy")
+    parser.add_argument("--timeframe", default="1Day")
+    parser.add_argument("--start", default="2025-01-01")
+    parser.add_argument("--end", default="2025-12-31")
     args = parser.parse_args(argv)
 
     if args.command == "backtest":
@@ -80,6 +92,21 @@ def main(argv: list[str] | None = None) -> int:
             print(str(error), file=sys.stderr)
             return 2
         print(json.dumps(clock.__dict__, indent=2))
+        return 0
+
+    if args.command == "data-preview":
+        try:
+            settings = MarketDataSettings.from_environment()
+            bars = AlpacaMarketDataClient(settings).fetch_bars(
+                [args.symbol],
+                start=args.start,
+                end=args.end,
+                timeframe=args.timeframe,
+            )
+        except (RuntimeError, ValueError) as error:
+            print(str(error), file=sys.stderr)
+            return 2
+        print(json.dumps({symbol: [bar.__dict__ for bar in symbol_bars[:5]] for symbol, symbol_bars in bars.items()}, indent=2))
         return 0
 
     reject_live_mode()

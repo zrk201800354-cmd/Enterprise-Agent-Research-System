@@ -19,6 +19,7 @@ from quant_agent.market_clock import AlpacaClockClient, TradingPreflight
 from quant_agent.market_data import AlpacaMarketDataClient, MarketDataSettings
 from quant_agent.optimizer import optimize_strategy
 from quant_agent.sample_data import load_sample_bars
+from quant_agent.trading_cycle import PaperTradingCycle
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -32,6 +33,7 @@ def main(argv: list[str] | None = None) -> int:
             "paper-preview",
             "paper-submit",
             "paper-clock",
+            "paper-cycle",
             "data-preview",
         ],
     )
@@ -41,6 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--timeframe", default="1Day")
     parser.add_argument("--start", default="2025-01-01")
     parser.add_argument("--end", default="2025-12-31")
+    parser.add_argument("--submit", action="store_true")
     args = parser.parse_args(argv)
 
     if args.command == "backtest":
@@ -98,6 +101,23 @@ def main(argv: list[str] | None = None) -> int:
             print(str(error), file=sys.stderr)
             return 2
         print(json.dumps(clock.__dict__, indent=2))
+        return 0
+
+    if args.command == "paper-cycle":
+        try:
+            broker_settings = PaperBrokerSettings.from_environment()
+            data_settings = MarketDataSettings.from_environment()
+            if args.submit:
+                TradingPreflight(lambda: AlpacaClockClient(broker_settings).get_clock()).assert_can_submit_order()
+            result = PaperTradingCycle(
+                AppConfig(mode="paper"),
+                AlpacaPaperBroker(broker_settings),
+                AlpacaMarketDataClient(data_settings),
+            ).run(args.start, args.end, timeframe=args.timeframe, submit_orders=args.submit)
+        except (DuplicateOrderError, RuntimeError, ValueError) as error:
+            print(str(error), file=sys.stderr)
+            return 2
+        print(json.dumps(result, default=lambda value: value.__dict__, indent=2))
         return 0
 
     if args.command == "data-preview":

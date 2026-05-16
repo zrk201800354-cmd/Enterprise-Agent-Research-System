@@ -76,6 +76,17 @@ $env:ALPACA_SECRET_KEY = "your-paper-secret"
 
 The clock command reads Alpaca's paper trading clock and reports whether the regular market is open.
 
+## Paper Trading Cycle
+
+```powershell
+$env:PYTHONPATH = "src"
+$env:ALPACA_API_KEY = "your-paper-key"
+$env:ALPACA_SECRET_KEY = "your-paper-secret"
+& "C:\Users\Ethan\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" -m quant_agent paper-cycle --timeframe 1Min --start 2025-01-01T14:30:00Z --end 2025-01-01T15:30:00Z
+```
+
+The cycle reads the paper account, current positions, and market data, then returns a JSON trade plan with reasons for buy, sell, hold, or skip decisions. It does not submit orders unless `--submit` is added. When `--submit` is used, the market clock and duplicate-order guard still run first.
+
 ## Market Data Preview
 
 ```powershell

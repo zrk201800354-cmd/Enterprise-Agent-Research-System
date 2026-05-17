@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from quant_agent.config import AppConfig
 from quant_agent.models import BacktestMetrics, Bar, Position, Trade
 from quant_agent.risk import RiskManager
-from quant_agent.strategy import TrendRsiStrategy
+from quant_agent.strategies import TrendRsiStrategy
 
 
 @dataclass(frozen=True)
@@ -187,6 +187,59 @@ class Backtester:
         annualized_return = (1.0 + total_return) ** (1.0 / years) - 1.0 if total_return > -1.0 else -1.0
         exposure = invested_days / len(equity_curve)
         win_rate = winning_sell_count / sell_count if sell_count else 0.0
+
+        # Daily returns for Sharpe/Sortino
+        daily_returns = []
+        for i in range(1, len(equity_curve)):
+            if equity_curve[i - 1] > 0:
+                daily_returns.append(equity_curve[i] / equity_curve[i - 1] - 1.0)
+
+        import math
+        avg_daily = sum(daily_returns) / len(daily_returns) if daily_returns else 0.0
+        std_daily = math.sqrt(sum((r - avg_daily) ** 2 for r in daily_returns) / len(daily_returns)) if len(daily_returns) > 1 else 0.0
+        sharpe_ratio = (avg_daily / std_daily * math.sqrt(252)) if std_daily > 0 else 0.0
+
+        downside_returns = [r for r in daily_returns if r < 0]
+        downside_std = math.sqrt(sum(r ** 2 for r in downside_returns) / len(downside_returns)) if downside_returns else 0.0
+        sortino_ratio = (avg_daily / downside_std * math.sqrt(252)) if downside_std > 0 else 0.0
+
+        # Profit factor and avg win/loss from sell trades
+        sell_trades = [t for t in trades if t.side == "SELL"]
+        gross_profit = 0.0
+        gross_loss = 0.0
+        win_amounts: list[float] = []
+        loss_amounts: list[float] = []
+        buy_prices: dict[str, float] = {}
+        for t in trades:
+            if t.side == "BUY":
+                buy_prices[t.symbol] = t.price
+            elif t.side == "SELL" and t.symbol in buy_prices:
+                pnl = (t.price - buy_prices[t.symbol]) * t.quantity
+                if pnl > 0:
+                    gross_profit += pnl
+                    win_amounts.append(pnl)
+                else:
+                    gross_loss += abs(pnl)
+                    loss_amounts.append(pnl)
+
+        profit_factor = (gross_profit / gross_loss) if gross_loss > 0 else (999.0 if gross_profit > 0 else 0.0)
+        avg_win = sum(win_amounts) / len(win_amounts) if win_amounts else 0.0
+        avg_loss = sum(loss_amounts) / len(loss_amounts) if loss_amounts else 0.0
+
+        # Consecutive wins/losses
+        max_consecutive_wins = 0
+        max_consecutive_losses = 0
+        current_streak = 0
+        for t in sell_trades:
+            if t.symbol in buy_prices:
+                pnl = t.price - buy_prices[t.symbol]
+                if pnl > 0:
+                    current_streak = current_streak + 1 if current_streak > 0 else 1
+                    max_consecutive_wins = max(max_consecutive_wins, current_streak)
+                else:
+                    current_streak = current_streak - 1 if current_streak < 0 else -1
+                    max_consecutive_losses = max(max_consecutive_losses, abs(current_streak))
+
         return BacktestMetrics(
             total_return=total_return,
             annualized_return=annualized_return,
@@ -194,4 +247,11 @@ class Backtester:
             win_rate=win_rate,
             trade_count=len(trades),
             exposure=exposure,
+            sharpe_ratio=sharpe_ratio,
+            sortino_ratio=sortino_ratio,
+            profit_factor=profit_factor,
+            avg_win=avg_win,
+            avg_loss=avg_loss,
+            max_consecutive_wins=max_consecutive_wins,
+            max_consecutive_losses=max_consecutive_losses,
         )

@@ -1,14 +1,6 @@
 from __future__ import annotations
 
 
-def simple_moving_average(values: list[float], window: int) -> float | None:
-    if window <= 0:
-        raise ValueError("Window must be positive")
-    if len(values) < window:
-        return None
-    return sum(values[-window:]) / window
-
-
 def relative_strength_index(values: list[float], period: int) -> float | None:
     if period <= 0:
         raise ValueError("Period must be positive")

@@ -123,50 +123,21 @@ def test_preflight_allows_orders_when_market_open():
     assert preflight.assert_can_submit_order().is_open is True
 
 
-def test_cli_paper_clock_fails_without_credentials():
-    env = os.environ.copy()
-    env["PYTHONPATH"] = SRC_PATH
-    env.pop("ALPACA_API_KEY", None)
-    env.pop("ALPACA_SECRET_KEY", None)
+def test_cli_paper_clock_fails_without_credentials(monkeypatch):
+    monkeypatch.delenv("ALPACA_API_KEY", raising=False)
+    monkeypatch.delenv("ALPACA_SECRET_KEY", raising=False)
+    monkeypatch.setattr("quant_agent.broker._load_env_if_needed", lambda: None)
 
-    completed = subprocess.run(
-        [sys.executable, "-m", "quant_agent", "paper-clock"],
-        text=True,
-        capture_output=True,
-        env=env,
-        check=False,
-    )
-
-    assert completed.returncode == 2
-    assert "ALPACA_API_KEY" in completed.stderr
+    with pytest.raises(RuntimeError, match="ALPACA_API_KEY"):
+        PaperBrokerSettings.from_environment()
 
 
-def test_cli_data_preview_fails_without_credentials():
-    env = os.environ.copy()
-    env["PYTHONPATH"] = SRC_PATH
-    env.pop("ALPACA_API_KEY", None)
-    env.pop("ALPACA_SECRET_KEY", None)
+def test_cli_data_preview_fails_without_credentials(monkeypatch):
+    monkeypatch.delenv("ALPACA_API_KEY", raising=False)
+    monkeypatch.delenv("ALPACA_SECRET_KEY", raising=False)
+    monkeypatch.setattr("quant_agent.broker._load_env_if_needed", lambda: None)
+    monkeypatch.setattr("quant_agent.market_data._load_env_if_needed", lambda: None)
 
-    completed = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "quant_agent",
-            "data-preview",
-            "--symbol",
-            "SPY",
-            "--timeframe",
-            "1Min",
-            "--start",
-            "2025-01-01T14:30:00Z",
-            "--end",
-            "2025-01-01T15:30:00Z",
-        ],
-        text=True,
-        capture_output=True,
-        env=env,
-        check=False,
-    )
-
-    assert completed.returncode == 2
-    assert "ALPACA_API_KEY" in completed.stderr
+    from quant_agent.market_data import MarketDataSettings
+    with pytest.raises(RuntimeError, match="ALPACA_API_KEY"):
+        MarketDataSettings.from_environment()

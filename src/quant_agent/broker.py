@@ -3,8 +3,21 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable
 from urllib import parse, request
+
+
+def _load_env_if_needed() -> None:
+    if os.getenv("ALPACA_API_KEY") and os.getenv("ALPACA_SECRET_KEY"):
+        return
+    try:
+        from dotenv import load_dotenv
+        env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+        if env_path.exists():
+            load_dotenv(env_path)
+    except ImportError:
+        pass
 
 
 @dataclass(frozen=True)
@@ -15,6 +28,7 @@ class PaperBrokerSettings:
 
     @classmethod
     def from_environment(cls) -> "PaperBrokerSettings":
+        _load_env_if_needed()
         api_key = os.getenv("ALPACA_API_KEY")
         secret_key = os.getenv("ALPACA_SECRET_KEY")
         if not api_key or not secret_key:

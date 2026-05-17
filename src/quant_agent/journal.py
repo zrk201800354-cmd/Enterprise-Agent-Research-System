@@ -49,18 +49,19 @@ def write_optimization_summary(
         lines = ["# Optimization Summary", "", "No valid candidates found.", ""]
     else:
         best = result.best
+        params_str = ", ".join(f"{k}={v}" for k, v in best.candidate.params.items())
         lines = [
             "# Optimization Summary",
             "",
-            f"- Short window: {best.candidate.short_window}",
-            f"- Long window: {best.candidate.long_window}",
-            f"- RSI entry ceiling: {best.candidate.rsi_entry_ceiling:.2f}",
+            f"- Strategy: {best.candidate.strategy_name}",
+            f"- Parameters: {params_str}",
             f"- Target allocation: {best.candidate.target_allocation:.2f}",
             f"- Train return: {best.train_metrics.total_return:.4f}",
             f"- Train max drawdown: {best.train_metrics.max_drawdown:.4f}",
             f"- Test return: {best.test_metrics.total_return:.4f}",
             f"- Test max drawdown: {best.test_metrics.max_drawdown:.4f}",
             f"- Candidates tested: {len(result.candidates)}",
+            f"- Run ID: {result.run_id}",
             "",
         ]
 

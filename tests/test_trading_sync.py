@@ -103,18 +103,9 @@ def test_duplicate_order_guard_allows_different_side_or_symbol():
 def test_cli_paper_submit_fails_without_credentials(monkeypatch):
     monkeypatch.delenv("ALPACA_API_KEY", raising=False)
     monkeypatch.delenv("ALPACA_SECRET_KEY", raising=False)
-    env = os.environ.copy()
-    env["PYTHONPATH"] = SRC_PATH
-    env.pop("ALPACA_API_KEY", None)
-    env.pop("ALPACA_SECRET_KEY", None)
+    monkeypatch.setattr("quant_agent.broker._load_env_if_needed", lambda: None)
+    monkeypatch.setattr("quant_agent.market_data._load_env_if_needed", lambda: None)
 
-    completed = subprocess.run(
-        [sys.executable, "-m", "quant_agent", "paper-submit", "--symbol", "SPY", "--qty", "1", "--side", "buy"],
-        text=True,
-        capture_output=True,
-        env=env,
-        check=False,
-    )
-
-    assert completed.returncode == 2
-    assert "ALPACA_API_KEY" in completed.stderr
+    from quant_agent.broker import PaperBrokerSettings
+    with pytest.raises(RuntimeError, match="ALPACA_API_KEY"):
+        PaperBrokerSettings.from_environment()

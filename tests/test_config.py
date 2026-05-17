@@ -11,14 +11,18 @@ def test_default_config_is_backtest_only_with_expected_symbols():
     assert config.symbols == DEFAULT_SYMBOLS
     assert config.risk.max_symbol_allocation == 0.20
     assert config.risk.max_total_allocation == 0.80
-    assert config.strategy.short_window == 20
-    assert config.strategy.long_window == 50
+    assert config.strategy.short_window == 50
+    assert config.strategy.long_window == 100
     assert config.strategy.rsi_period == 14
-    assert config.strategy.rsi_entry_ceiling == 70.0
+    assert config.strategy.rsi_entry_ceiling == 60.0
 
 
 def test_default_symbols_are_immutable():
-    assert DEFAULT_SYMBOLS == ("SPY", "QQQ", "AAPL", "MSFT", "NVDA")
+    assert len(DEFAULT_SYMBOLS) == 36
+    assert "SPY" in DEFAULT_SYMBOLS
+    assert "JPM" in DEFAULT_SYMBOLS
+    assert "XOM" in DEFAULT_SYMBOLS
+    assert isinstance(DEFAULT_SYMBOLS, tuple)
 
 
 def test_config_normalizes_symbols_to_immutable_tuple():

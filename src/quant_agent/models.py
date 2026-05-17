@@ -74,3 +74,10 @@ class BacktestMetrics:
     win_rate: float
     trade_count: int
     exposure: float
+    sharpe_ratio: float = 0.0
+    sortino_ratio: float = 0.0
+    profit_factor: float = 0.0
+    avg_win: float = 0.0
+    avg_loss: float = 0.0
+    max_consecutive_wins: int = 0
+    max_consecutive_losses: int = 0

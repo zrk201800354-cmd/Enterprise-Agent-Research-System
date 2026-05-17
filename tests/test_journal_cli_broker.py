@@ -58,6 +58,7 @@ def test_journal_writes_markdown_summary_and_json_metrics(tmp_path):
 def test_paper_broker_settings_require_env_keys(monkeypatch):
     monkeypatch.delenv("ALPACA_API_KEY", raising=False)
     monkeypatch.delenv("ALPACA_SECRET_KEY", raising=False)
+    monkeypatch.setattr("quant_agent.broker._load_env_if_needed", lambda: None)
 
     with pytest.raises(RuntimeError, match="ALPACA_API_KEY"):
         PaperBrokerSettings.from_environment()
@@ -149,20 +150,14 @@ def test_cli_backtest_runs_without_network(tmp_path):
     assert (tmp_path / "backtest-metrics.json").exists()
 
 
-def test_cli_paper_fails_without_credentials():
-    env = os.environ.copy()
-    env["PYTHONPATH"] = SRC_PATH
+def test_cli_paper_fails_without_credentials(monkeypatch):
+    monkeypatch.delenv("ALPACA_API_KEY", raising=False)
+    monkeypatch.delenv("ALPACA_SECRET_KEY", raising=False)
+    monkeypatch.setattr("quant_agent.broker._load_env_if_needed", lambda: None)
 
-    completed = subprocess.run(
-        [sys.executable, "-m", "quant_agent", "paper"],
-        text=True,
-        capture_output=True,
-        env=env,
-        check=False,
-    )
-
-    assert completed.returncode == 2
-    assert "ALPACA_API_KEY" in completed.stderr
+    from quant_agent.broker import PaperBrokerSettings
+    with pytest.raises(RuntimeError, match="ALPACA_API_KEY"):
+        PaperBrokerSettings.from_environment()
 
 
 def test_cli_paper_preview_builds_order_without_credentials():

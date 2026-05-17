@@ -3,7 +3,7 @@ import pytest
 from quant_agent.config import StrategyConfig
 from quant_agent.indicators import relative_strength_index, simple_moving_average
 from quant_agent.models import Bar, Position
-from quant_agent.strategy import TrendRsiStrategy
+from quant_agent.strategies import TrendRsiStrategy
 
 
 def bars_from_closes(closes):

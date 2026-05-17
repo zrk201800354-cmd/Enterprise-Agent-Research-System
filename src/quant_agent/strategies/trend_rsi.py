@@ -3,11 +3,16 @@ from __future__ import annotations
 from quant_agent.config import StrategyConfig
 from quant_agent.indicators import relative_strength_index, simple_moving_average
 from quant_agent.models import Bar, Position, Signal
+from quant_agent.strategies.base import register_strategy
 
 
+@register_strategy
 class TrendRsiStrategy:
-    def __init__(self, config: StrategyConfig, target_allocation: float = 0.20) -> None:
-        self.config = config
+    name = "trend_rsi"
+    allows_live_trading = True
+
+    def __init__(self, config: StrategyConfig | None = None, target_allocation: float = 0.20) -> None:
+        self.config = config or StrategyConfig()
         self.target_allocation = target_allocation
 
     def generate_signal(self, symbol: str, bars: list[Bar], existing_position: Position | None) -> Signal:

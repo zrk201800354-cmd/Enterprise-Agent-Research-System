@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>加密货币 - QUANT AGENT</title>
+<style>
+:root {
+  --bg-base: #0b0d13;
+  --bg-primary: #0f1219;
+  --bg-card: #151923;
+  --bg-card-hover: #1a1f2e;
+  --bg-elevated: #1e2333;
+  --bg-input: #252b3b;
+  --text-primary: #e8ecf4;
+  --text-secondary: #8b95a8;
+  --text-muted: #5a6478;
+  --accent: #6366f1;
+  --accent-light: #818cf8;
+  --accent-glow: rgba(99,102,241,0.15);
+  --green: #10b981;
+  --green-bg: rgba(16,185,129,0.1);
+  --green-glow: rgba(16,185,129,0.2);
+  --red: #f43f5e;
+  --red-bg: rgba(244,63,94,0.1);
+  --red-glow: rgba(244,63,94,0.2);
+  --yellow: #f59e0b;
+  --border: rgba(255,255,255,0.06);
+  --border-light: rgba(255,255,255,0.1);
+  --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  line-height: 1.6;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+.header {
+  background: linear-gradient(180deg, rgba(21,25,35,0.98), rgba(15,18,25,0.95));
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(20px);
+}
+.header-left { display:flex; align-items:center; gap:16px; }
+.logo {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--accent-light);
+  text-decoration: none;
+}
+.logo:hover { color: var(--accent); }
+.nav-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 4px 12px;
+  border-radius: 6px;
+  transition: var(--transition);
+}
+.nav-link:hover { color: var(--text-primary); background: var(--bg-elevated); }
+.nav-link.active { color: var(--accent-light); background: var(--accent-glow); }
+.header-right { display:flex; align-items:center; gap:16px; }
+.container { max-width:1480px; margin:0 auto; padding:20px 28px; }
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+}
+.card:hover { border-color: var(--border-light); }
+.card-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.card-header h2 { font-size: 13px; font-weight: 700; letter-spacing: 0.3px; }
+.card-body { padding: 16px 18px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 16px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 600;
+  background: var(--accent); color: #fff;
+  border: none; cursor: pointer;
+  transition: var(--transition);
+}
+.btn:hover { background: var(--accent-light); transform: translateY(-1px); }
+.btn-sm { padding:4px 12px; font-size:12px; }
+.btn-outline { background:transparent; border:1px solid var(--border); color:var(--text-secondary); }
+.btn-outline:hover { border-color:var(--accent); color:var(--accent-light); background:var(--accent-glow); }
+.btn-danger { background:var(--red); }
+.btn-danger:hover { background:#e11d48; }
+.empty-state { text-align:center; padding:20px; color:var(--text-muted); font-size:13px; }
+.crypto-sym-btn { opacity:0.5; transition:var(--transition); }
+.crypto-sym-btn.active { opacity:1; background:var(--accent); color:#fff; }
+.toast {
+  position:fixed; bottom:24px; right:24px; padding:12px 20px;
+  background:var(--bg-elevated); border:1px solid var(--border);
+  border-radius:var(--radius-sm); font-size:13px; font-weight:600;
+  z-index:1000; animation:fadeIn 0.3s ease;
+  box-shadow:var(--shadow);
+}
+.toast.success { border-left:3px solid var(--green); }
+.toast.error { border-left:3px solid var(--red); }
+@keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--bg-elevated); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:var(--text-muted); }
+
+/* Layout */
+.main-grid { display:grid; grid-template-columns:1fr 360px; gap:16px; margin-top:16px; }
+@media (max-width:1100px) { .main-grid { grid-template-columns:1fr; } }
+
+/* Ticker */
+.ticker-price { font-size:32px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-0.5px; }
+.ticker-change { font-size:16px; font-weight:700; padding:3px 10px; border-radius:6px; }
+.ticker-row { display:flex; gap:16px; margin-top:8px; font-size:12px; color:var(--text-muted); }
+.ticker-row span { display:flex; gap:4px; }
+
+/* Order Book */
+.book-side { font-variant-numeric:tabular-nums; }
+.book-row {
+  display:flex; justify-content:space-between; padding:3px 0;
+  border-bottom:1px solid var(--border); font-size:12px;
+  position:relative;
+}
+.book-row .bar {
+  position:absolute; top:0; right:0; bottom:0;
+  opacity:0.1; pointer-events:none;
+}
+.book-price { font-weight:600; }
+.book-qty { color:var(--text-secondary); }
+
+/* Trades */
+.trade-row {
+  display:flex; justify-content:space-between; padding:4px 0;
+  border-bottom:1px solid var(--border); font-size:12px;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Candles mini table */
+.candle-row {
+  display:flex; justify-content:space-between; padding:3px 0;
+  border-bottom:1px solid var(--border); font-size:11px;
+  font-variant-numeric:tabular-nums;
+}
+.hidden { display:none !important; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <a href="/" class="logo">QUANT AGENT</a>
+    <a href="/" class="nav-link">美股</a>
+    <a href="/crypto" class="nav-link active">加密货币</a>
+    <span class="market-tag" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted)">
+      <span id="crypto-conn-dot" style="width:6px;height:6px;border-radius:50%;display:inline-block;background:var(--red)"></span>
+      <span id="crypto-conn-text">连接中...</span>
+    </span>
+  </div>
+  <div class="header-right">
+    <span style="font-size:12px;color:var(--text-muted)">BTC</span>
+    <span style="font-size:18px;font-weight:800;font-variant-numeric:tabular-nums" id="hdr-btc-price">--</span>
+    <span style="font-size:12px;color:var(--text-muted)">ETH</span>
+    <span style="font-size:18px;font-weight:800;font-variant-numeric:tabular-nums" id="hdr-eth-price">--</span>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Symbol Selector -->
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
+    <span style="font-size:13px;font-weight:600;color:var(--text-muted);margin-right:8px">交易对</span>
+    <button class="btn btn-sm crypto-sym-btn active" onclick="selectSymbol('BTC-USDT')" id="btn-BTC-USDT">BTC/USDT</button>
+    <button class="btn btn-sm crypto-sym-btn" onclick="selectSymbol('ETH-USDT')" id="btn-ETH-USDT">ETH/USDT</button>
+    <button class="btn btn-sm crypto-sym-btn" onclick="selectSymbol('SOL-USDT')" id="btn-SOL-USDT">SOL/USDT</button>
+    <button class="btn btn-sm crypto-sym-btn" onclick="selectSymbol('XRP-USDT')" id="btn-XRP-USDT">XRP/USDT</button>
+    <button class="btn btn-sm crypto-sym-btn" onclick="selectSymbol('DOGE-USDT')" id="btn-DOGE-USDT">DOGE/USDT</button>
+    <span style="flex:1"></span>
+    <span style="font-size:11px;color:var(--text-muted)" id="last-update">--</span>
+  </div>
+
+  <div class="main-grid">
+    <!-- Left: Main Content -->
+    <div>
+      <!-- Ticker -->
+      <div class="card">
+        <div class="card-header">
+          <h2 id="ticker-title">BTC-USDT</h2>
+          <span style="font-size:11px;color:var(--text-muted)" id="ticker-time">--</span>
+        </div>
+        <div class="card-body">
+          <div style="display:flex;align-items:baseline;gap:16px">
+            <span class="ticker-price" id="price">--</span>
+            <span class="ticker-change" id="change">--</span>
+          </div>
+          <div class="ticker-row">
+            <span>买一 <b style="color:var(--green)" id="bid">--</b></span>
+            <span>卖一 <b style="color:var(--red)" id="ask">--</b></span>
+            <span>价差 <b id="spread">--</b></span>
+            <span>24h量 <b id="vol24h">--</b></span>
+            <span>24h高 <b id="high24h">--</b></span>
+            <span>24h低 <b id="low24h">--</b></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Candles -->
+      <div class="card" style="margin-top:16px">
+        <div class="card-header">
+          <h2>K线 (1分钟)</h2>
+          <span style="font-size:11px;color:var(--text-muted)" id="candle-count">0 根</span>
+        </div>
+        <div class="card-body" style="max-height:300px;overflow-y:auto">
+          <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:11px;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border-light)">
+            <span style="width:60px">时间</span>
+            <span style="width:80px;text-align:right">开</span>
+            <span style="width:80px;text-align:right">高</span>
+            <span style="width:80px;text-align:right">低</span>
+            <span style="width:80px;text-align:right">收</span>
+            <span style="width:80px;text-align:right">量</span>
+            <span style="width:40px;text-align:right">状态</span>
+          </div>
+          <div id="candles-list"></div>
+        </div>
+      </div>
+
+      <!-- Trades -->
+      <div class="card" style="margin-top:16px">
+        <div class="card-header">
+          <h2>最新成交</h2>
+          <span style="font-size:11px;color:var(--text-muted)" id="trade-count">0 笔</span>
+        </div>
+        <div class="card-body" style="max-height:360px;overflow-y:auto">
+          <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:11px;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border-light)">
+            <span>方向</span>
+            <span>价格</span>
+            <span>数量</span>
+            <span>时间</span>
+          </div>
+          <div id="trades-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Sidebar -->
+    <div>
+      <!-- Order Book -->
+      <div class="card">
+        <div class="card-header">
+          <h2>盘口</h2>
+          <span style="font-size:11px;color:var(--text-muted)" id="book-time">--</span>
+        </div>
+        <div class="card-body">
+          <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:11px;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border-light)">
+            <span>价格</span>
+            <span>数量</span>
+          </div>
+          <div style="margin-bottom:8px">
+            <div style="font-size:10px;color:var(--red);font-weight:600;margin:6px 0 4px">卖盘</div>
+            <div id="asks-list" class="book-side"></div>
+          </div>
+          <div style="padding:8px 0;border-top:1px solid var(--border-light);border-bottom:1px solid var(--border-light);text-align:center">
+            <span style="font-size:11px;color:var(--text-muted)">中间价</span>
+            <span style="font-size:16px;font-weight:800;margin-left:8px" id="mid-price">--</span>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--green);font-weight:600;margin:6px 0 4px">买盘</div>
+            <div id="bids-list" class="book-side"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Multi-symbol Overview -->
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><h2>全部行情</h2></div>
+        <div class="card-body" id="all-tickers">
+          <div class="empty-state">加载中...</div>
+        </div>
+      </div>
+
+      <!-- Trading -->
+      <div class="card" style="margin-top:16px">
+        <div class="card-header">
+          <h2>交易</h2>
+          <span style="font-size:11px;color:var(--text-muted)" id="trade-mode-tag">模拟盘</span>
+        </div>
+        <div class="card-body">
+          <!-- Balance -->
+          <div style="padding:10px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border);margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+              <span style="color:var(--text-muted)">USDT 可用</span>
+              <span style="font-weight:700;font-variant-numeric:tabular-nums" id="usdt-avail">--</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px">
+              <span style="color:var(--text-muted)">USDT 总计</span>
+              <span style="font-weight:700;font-variant-numeric:tabular-nums" id="usdt-total">--</span>
+            </div>
+          </div>
+
+          <!-- Order Form -->
+          <div style="margin-bottom:14px">
+            <div style="display:flex;gap:6px;margin-bottom:10px">
+              <button class="btn btn-sm" id="tab-market" onclick="setOrderType('market')" style="flex:1;background:var(--accent)">市价</button>
+              <button class="btn btn-sm btn-outline" id="tab-limit" onclick="setOrderType('limit')" style="flex:1">限价</button>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:8px">
+              <div style="flex:1">
+                <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">数量 (<span id="qty-unit">BTC</span>)</label>
+                <input type="number" id="order-qty" step="0.0001" placeholder="0.001" style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;font-variant-numeric:tabular-nums">
+              </div>
+              <div style="flex:1" id="price-field" class="hidden">
+                <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">价格 (USDT)</label>
+                <input type="number" id="order-price" step="0.01" placeholder="0.00" style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;font-variant-numeric:tabular-nums">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn" style="flex:1;background:var(--green)" onclick="placeOrder('buy')">买入</button>
+              <button class="btn btn-danger" style="flex:1" onclick="placeOrder('sell')">卖出</button>
+            </div>
+            <div id="order-result" style="font-size:12px;margin-top:8px;min-height:18px"></div>
+          </div>
+
+          <!-- Positions -->
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">持仓</div>
+          <div id="positions-list" style="max-height:150px;overflow-y:auto;font-size:12px;margin-bottom:12px">
+            <div class="empty-state">加载中...</div>
+          </div>
+
+          <!-- Open Orders -->
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">挂单</div>
+          <div id="open-orders-list" style="max-height:150px;overflow-y:auto;font-size:12px">
+            <div class="empty-state">暂无挂单</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trading Bot -->
+      <div class="card" style="margin-top:16px">
+        <div class="card-header">
+          <h2>自动交易机器人</h2>
+          <span style="font-size:11px;color:var(--text-muted)" id="bot-status-tag">已停止</span>
+        </div>
+        <div class="card-body">
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <button class="btn btn-sm" style="flex:1;background:var(--green)" onclick="botStart()" id="btn-bot-start">启动</button>
+            <button class="btn btn-sm btn-danger" style="flex:1" onclick="botStop()" id="btn-bot-stop" disabled>停止</button>
+          </div>
+          <div style="padding:10px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border);margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+              <span style="color:var(--text-muted)">策略</span>
+              <span style="font-weight:600" id="bot-strategy">--</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+              <span style="color:var(--text-muted)">时间框架</span>
+              <span style="font-weight:600" id="bot-timeframe">--</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+              <span style="color:var(--text-muted)">权益</span>
+              <span style="font-weight:700;font-variant-numeric:tabular-nums" id="bot-equity">--</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+              <span style="color:var(--text-muted)">总 PnL</span>
+              <span style="font-weight:700;font-variant-numeric:tabular-nums" id="bot-pnl">--</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+              <span style="color:var(--text-muted)">胜率</span>
+              <span style="font-weight:600" id="bot-winrate">--</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+              <span style="color:var(--text-muted)">最大回撤</span>
+              <span style="font-weight:600;color:var(--red)" id="bot-drawdown">--</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px">
+              <span style="color:var(--text-muted)">交易次数</span>
+              <span style="font-weight:600" id="bot-trades">--</span>
+            </div>
+          </div>
+          <!-- Bot Positions -->
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">机器人持仓</div>
+          <div id="bot-positions" style="max-height:100px;overflow-y:auto;font-size:12px;margin-bottom:10px">
+            <div class="empty-state">无持仓</div>
+          </div>
+          <!-- Recent Bot Trades -->
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">最近交易</div>
+          <div id="bot-trades-list" style="max-height:120px;overflow-y:auto;font-size:12px">
+            <div class="empty-state">暂无交易</div>
+          </div>
+          <!-- Optimization -->
+          <div style="margin-top:10px;padding:8px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border)">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;font-weight:600">策略优化</div>
+            <div style="font-size:12px" id="bot-optimization">上次: 从未</div>
+          </div>
+          <div id="bot-errors" style="font-size:11px;color:var(--red);margin-top:8px;max-height:60px;overflow-y:auto"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentSymbol = 'BTC-USDT';
+let orderType = 'market';
+
+function selectSymbol(symbol) {
+  currentSymbol = symbol;
+  document.querySelectorAll('.crypto-sym-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('btn-' + symbol);
+  if (btn) btn.classList.add('active');
+  document.getElementById('ticker-title').textContent = symbol;
+  document.getElementById('qty-unit').textContent = symbol.split('-')[0];
+  refreshAll();
+}
+
+function fmtPrice(p) {
+  if (!p || p === 0) return '--';
+  if (p >= 1000) return p.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  if (p >= 1) return p.toFixed(4);
+  return p.toFixed(6);
+}
+function fmtVol(v) {
+  if (!v || v === 0) return '--';
+  if (v >= 1e9) return (v/1e9).toFixed(2) + 'B';
+  if (v >= 1e6) return (v/1e6).toFixed(2) + 'M';
+  if (v >= 1e3) return (v/1e3).toFixed(2) + 'K';
+  return v.toFixed(4);
+}
+function fmtTime(ts) {
+  return new Date(ts).toLocaleTimeString('zh-CN');
+}
+
+async function refreshTicker() {
+  try {
+    const r = await fetch('/api/crypto/ticker/' + currentSymbol);
+    if (!r.ok) return;
+    const t = await r.json();
+    document.getElementById('price').textContent = fmtPrice(t.last);
+    // change % based on 24h
+    const range = t.high24h - t.low24h;
+    const changePct = range > 0 ? ((t.last - t.low24h) / range * 100) : 0;
+    const el = document.getElementById('change');
+    el.textContent = (changePct >= 0 ? '+' : '') + changePct.toFixed(2) + '% (24h范围)';
+    el.style.color = changePct >= 50 ? 'var(--green)' : changePct < 30 ? 'var(--red)' : 'var(--yellow)';
+    el.style.background = changePct >= 50 ? 'var(--green-bg)' : changePct < 30 ? 'var(--red-bg)' : 'var(--yellow-bg)';
+    document.getElementById('bid').textContent = fmtPrice(t.bid);
+    document.getElementById('ask').textContent = fmtPrice(t.ask);
+    document.getElementById('spread').textContent = t.ask > 0 && t.bid > 0 ? fmtPrice(t.ask - t.bid) : '--';
+    document.getElementById('vol24h').textContent = fmtVol(t.vol24h);
+    document.getElementById('high24h').textContent = fmtPrice(t.high24h);
+    document.getElementById('low24h').textContent = fmtPrice(t.low24h);
+    document.getElementById('ticker-time').textContent = fmtTime(t.ts);
+    // header
+    const hdrId = currentSymbol.split('-')[0].toLowerCase() + '-price';
+    const hdrEl = document.getElementById('hdr-' + hdrId);
+    if (hdrEl) hdrEl.textContent = fmtPrice(t.last);
+  } catch(e) {}
+}
+
+async function refreshTrades() {
+  try {
+    const r = await fetch('/api/crypto/trades/' + currentSymbol + '?limit=50');
+    if (!r.ok) return;
+    const trades = await r.json();
+    document.getElementById('trade-count').textContent = trades.length + ' 笔';
+    const el = document.getElementById('trades-list');
+    if (trades.length === 0) { el.innerHTML = '<div class="empty-state">暂无数据</div>'; return; }
+    el.innerHTML = trades.slice(-50).reverse().map(t => {
+      const c = t.side === 'buy' ? 'var(--green)' : 'var(--red)';
+      return `<div class="trade-row">
+        <span style="color:${c};font-weight:600">${t.side === 'buy' ? '买' : '卖'}</span>
+        <span style="color:${c}">${fmtPrice(t.price)}</span>
+        <span>${fmtVol(t.qty)}</span>
+        <span style="color:var(--text-muted)">${fmtTime(t.ts)}</span>
+      </div>`;
+    }).join('');
+  } catch(e) {}
+}
+
+async function refreshBooks() {
+  try {
+    const r = await fetch('/api/crypto/books/' + currentSymbol);
+    if (!r.ok) return;
+    const book = await r.json();
+    document.getElementById('book-time').textContent = fmtTime(book.ts);
+    const maxQty = Math.max(
+      ...book.asks.slice(0,5).map(a => a.qty),
+      ...book.bids.slice(0,5).map(b => b.qty), 0.001
+    );
+    document.getElementById('asks-list').innerHTML = book.asks.slice(0,5).reverse().map(a => {
+      const pct = (a.qty / maxQty * 100).toFixed(0);
+      return `<div class="book-row">
+        <div class="bar" style="width:${pct}%;background:var(--red)"></div>
+        <span class="book-price" style="color:var(--red)">${fmtPrice(a.price)}</span>
+        <span class="book-qty">${fmtVol(a.qty)}</span>
+      </div>`;
+    }).join('');
+    document.getElementById('bids-list').innerHTML = book.bids.slice(0,5).map(b => {
+      const pct = (b.qty / maxQty * 100).toFixed(0);
+      return `<div class="book-row">
+        <div class="bar" style="width:${pct}%;background:var(--green)"></div>
+        <span class="book-price" style="color:var(--green)">${fmtPrice(b.price)}</span>
+        <span class="book-qty">${fmtVol(b.qty)}</span>
+      </div>`;
+    }).join('');
+    if (book.asks.length > 0 && book.bids.length > 0) {
+      const mid = (book.asks[0].price + book.bids[0].price) / 2;
+      document.getElementById('mid-price').textContent = fmtPrice(mid);
+    }
+  } catch(e) {}
+}
+
+async function refreshCandles() {
+  try {
+    const r = await fetch('/api/crypto/candles/' + currentSymbol + '?limit=60');
+    if (!r.ok) return;
+    const candles = await r.json();
+    document.getElementById('candle-count').textContent = candles.length + ' 根';
+    const el = document.getElementById('candles-list');
+    if (candles.length === 0) { el.innerHTML = '<div class="empty-state">暂无数据</div>'; return; }
+    el.innerHTML = candles.slice(-30).reverse().map(c => {
+      const color = c.close >= c.open ? 'var(--green)' : 'var(--red)';
+      return `<div class="candle-row">
+        <span style="width:60px;color:var(--text-muted)">${fmtTime(c.ts)}</span>
+        <span style="width:80px;text-align:right">${fmtPrice(c.open)}</span>
+        <span style="width:80px;text-align:right;color:var(--green)">${fmtPrice(c.high)}</span>
+        <span style="width:80px;text-align:right;color:var(--red)">${fmtPrice(c.low)}</span>
+        <span style="width:80px;text-align:right;color:${color};font-weight:600">${fmtPrice(c.close)}</span>
+        <span style="width:80px;text-align:right">${fmtVol(c.vol)}</span>
+        <span style="width:40px;text-align:right">${c.complete ? '&#9679;' : '&#9675;'}</span>
+      </div>`;
+    }).join('');
+  } catch(e) {}
+}
+
+async function refreshAllTickers() {
+  try {
+    const r = await fetch('/api/crypto/tickers');
+    if (!r.ok) return;
+    const tickers = await r.json();
+    const el = document.getElementById('all-tickers');
+    const keys = Object.keys(tickers);
+    if (keys.length === 0) { el.innerHTML = '<div class="empty-state">暂无数据</div>'; return; }
+    el.innerHTML = keys.map(k => {
+      const t = tickers[k];
+      const range = t.high24h - t.low24h;
+      const pct = range > 0 ? ((t.last - t.low24h) / range * 100) : 0;
+      const color = pct >= 50 ? 'var(--green)' : pct < 30 ? 'var(--red)' : 'var(--yellow)';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="selectSymbol('${k}')">
+        <span style="font-weight:600">${k.replace('-USDT','')}</span>
+        <span style="font-variant-numeric:tabular-nums">${fmtPrice(t.last)}</span>
+        <span style="color:${color};font-size:12px;font-weight:600">${pct.toFixed(1)}%</span>
+      </div>`;
+    }).join('');
+    // update header BTC/ETH
+    if (tickers['BTC-USDT']) document.getElementById('hdr-btc-price').textContent = fmtPrice(tickers['BTC-USDT'].last);
+    if (tickers['ETH-USDT']) document.getElementById('hdr-eth-price').textContent = fmtPrice(tickers['ETH-USDT'].last);
+  } catch(e) {}
+}
+
+// --- Trading ---
+function setOrderType(type) {
+  orderType = type;
+  const tabMarket = document.getElementById('tab-market');
+  const tabLimit = document.getElementById('tab-limit');
+  const priceField = document.getElementById('price-field');
+  if (type === 'market') {
+    tabMarket.style.background = 'var(--accent)';
+    tabMarket.style.color = '#fff';
+    tabMarket.classList.remove('btn-outline');
+    tabLimit.style.background = 'transparent';
+    tabLimit.style.color = 'var(--text-secondary)';
+    tabLimit.classList.add('btn-outline');
+    priceField.classList.add('hidden');
+  } else {
+    tabLimit.style.background = 'var(--accent)';
+    tabLimit.style.color = '#fff';
+    tabLimit.classList.remove('btn-outline');
+    tabMarket.style.background = 'transparent';
+    tabMarket.style.color = 'var(--text-secondary)';
+    tabMarket.classList.add('btn-outline');
+    priceField.classList.remove('hidden');
+  }
+}
+
+async function placeOrder(side) {
+  const qty = document.getElementById('order-qty').value;
+  if (!qty || parseFloat(qty) <= 0) {
+    showToast('请输入数量', 'error');
+    return;
+  }
+  const body = { symbol: currentSymbol, side, qty, order_type: orderType };
+  if (orderType === 'limit') {
+    const price = document.getElementById('order-price').value;
+    if (!price || parseFloat(price) <= 0) {
+      showToast('限价单需要输入价格', 'error');
+      return;
+    }
+    body.price = price;
+  }
+  const resEl = document.getElementById('order-result');
+  resEl.textContent = '提交中...';
+  resEl.style.color = 'var(--text-muted)';
+  try {
+    const r = await fetch('/api/crypto/order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (r.ok && data.order_id) {
+      resEl.textContent = `${side === 'buy' ? '买入' : '卖出'}成功 #${data.order_id}`;
+      resEl.style.color = 'var(--green)';
+      showToast(`${side === 'buy' ? '买入' : '卖出'}成功`, 'success');
+      document.getElementById('order-qty').value = '';
+      document.getElementById('order-price').value = '';
+      refreshBalance();
+      refreshPositions();
+      refreshOrders();
+    } else {
+      resEl.textContent = data.error || '下单失败';
+      resEl.style.color = 'var(--red)';
+      showToast(data.error || '下单失败', 'error');
+    }
+  } catch (e) {
+    resEl.textContent = '网络错误';
+    resEl.style.color = 'var(--red)';
+    showToast('网络错误', 'error');
+  }
+}
+
+async function cancelOrder(instId, ordId) {
+  try {
+    const r = await fetch('/api/crypto/order', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inst_id: instId, ord_id: ordId }),
+    });
+    const data = await r.json();
+    if (r.ok) {
+      showToast('撤单成功', 'success');
+      refreshOrders();
+    } else {
+      showToast(data.error || '撤单失败', 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+async function refreshBalance() {
+  try {
+    const r = await fetch('/api/crypto/account');
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.error) return;
+    document.getElementById('usdt-avail').textContent = fmtPrice(d.available || 0);
+    document.getElementById('usdt-total').textContent = fmtPrice(d.equity || 0);
+  } catch (e) {}
+}
+
+async function refreshPositions() {
+  try {
+    const r = await fetch('/api/crypto/positions');
+    if (!r.ok) return;
+    const positions = await r.json();
+    const el = document.getElementById('positions-list');
+    if (!positions || positions.length === 0) {
+      el.innerHTML = '<div class="empty-state">无持仓</div>';
+      return;
+    }
+    el.innerHTML = positions.map(p => {
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="font-weight:600">${p.symbol}</span>
+        <span>${fmtVol(parseFloat(p.qty))}</span>
+        <span style="color:var(--text-muted)">${fmtPrice(parseFloat(p.market_value))}U</span>
+      </div>`;
+    }).join('');
+  } catch (e) {}
+}
+
+async function refreshOrders() {
+  try {
+    const r = await fetch('/api/crypto/orders');
+    if (!r.ok) return;
+    const orders = await r.json();
+    const el = document.getElementById('open-orders-list');
+    if (!orders || orders.length === 0) {
+      el.innerHTML = '<div class="empty-state">暂无挂单</div>';
+      return;
+    }
+    el.innerHTML = orders.map(o => {
+      const sideColor = o.side === 'buy' ? 'var(--green)' : 'var(--red)';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <span style="color:${sideColor};font-weight:600">${o.side === 'buy' ? '买' : '卖'}</span>
+        <span>${o.symbol}</span>
+        <span>${fmtVol(parseFloat(o.qty))}</span>
+        <span>${o.order_type === 'limit' ? fmtPrice(parseFloat(o.price)) : '市价'}</span>
+        <button class="btn btn-sm btn-danger" style="padding:2px 8px;font-size:11px" onclick="cancelOrder('${o.symbol}','${o.order_id}')">撤</button>
+      </div>`;
+    }).join('');
+  } catch (e) {}
+}
+
+function showToast(msg, type) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+async function checkConnection() {
+  try {
+    const r = await fetch('/api/crypto/status');
+    if (!r.ok) return;
+    const s = await r.json();
+    const dot = document.getElementById('crypto-conn-dot');
+    const text = document.getElementById('crypto-conn-text');
+    if (s.connected) {
+      dot.style.background = 'var(--green)';
+      dot.style.boxShadow = '0 0 8px var(--green-glow)';
+      text.textContent = '已连接';
+      text.style.color = 'var(--green)';
+    } else {
+      dot.style.background = 'var(--red)';
+      dot.style.boxShadow = 'none';
+      text.textContent = '连接中...';
+      text.style.color = 'var(--text-muted)';
+    }
+  } catch(e) {}
+}
+
+async function refreshAll() {
+  await Promise.all([refreshTicker(), refreshTrades(), refreshBooks(), refreshCandles()]);
+  document.getElementById('last-update').textContent = '更新: ' + new Date().toLocaleTimeString('zh-CN');
+}
+
+async function refreshTrading() {
+  await Promise.all([refreshBalance(), refreshPositions(), refreshOrders()]);
+}
+
+// --- Bot ---
+async function botStart() {
+  try {
+    const r = await fetch('/api/crypto-bot/start', { method: 'POST' });
+    const d = await r.json();
+    showToast('机器人已启动', 'success');
+    refreshBotStatus();
+  } catch (e) { showToast('启动失败', 'error'); }
+}
+
+async function botStop() {
+  try {
+    const r = await fetch('/api/crypto-bot/stop', { method: 'POST' });
+    showToast('机器人已停止', 'success');
+    refreshBotStatus();
+  } catch (e) { showToast('停止失败', 'error'); }
+}
+
+async function refreshBotStatus() {
+  try {
+    const r = await fetch('/api/crypto-bot/status');
+    if (!r.ok) return;
+    const s = await r.json();
+    const tag = document.getElementById('bot-status-tag');
+    const btnStart = document.getElementById('btn-bot-start');
+    const btnStop = document.getElementById('btn-bot-stop');
+    if (s.running) {
+      tag.textContent = '运行中';
+      tag.style.color = 'var(--green)';
+      btnStart.disabled = true;
+      btnStop.disabled = false;
+    } else {
+      tag.textContent = '已停止';
+      tag.style.color = 'var(--text-muted)';
+      btnStart.disabled = false;
+      btnStop.disabled = true;
+    }
+    document.getElementById('bot-strategy').textContent = s.strategy || '--';
+    document.getElementById('bot-timeframe').textContent = s.timeframe || '--';
+    document.getElementById('bot-equity').textContent = s.equity > 0 ? fmtPrice(s.equity) : '--';
+    const pnlEl = document.getElementById('bot-pnl');
+    pnlEl.textContent = s.pnl_total !== 0 ? fmtPrice(s.pnl_total) : '--';
+    pnlEl.style.color = s.pnl_total >= 0 ? 'var(--green)' : 'var(--red)';
+    document.getElementById('bot-winrate').textContent = s.win_rate > 0 ? (s.win_rate * 100).toFixed(1) + '%' : '--';
+    document.getElementById('bot-drawdown').textContent = s.max_drawdown > 0 ? (s.max_drawdown * 100).toFixed(2) + '%' : '--';
+    document.getElementById('bot-trades').textContent = s.total_trades || '0';
+    // Bot positions
+    const posEl = document.getElementById('bot-positions');
+    if (s.positions && s.positions.length > 0) {
+      posEl.innerHTML = s.positions.map(p =>
+        `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)">
+          <span style="font-weight:600">${p.symbol}</span>
+          <span>${fmtVol(p.qty)}</span>
+          <span style="color:var(--text-muted)">@${fmtPrice(p.avg_price)}</span>
+          <span style="color:var(--yellow)">峰值${fmtPrice(p.highest)}</span>
+        </div>`
+      ).join('');
+    } else {
+      posEl.innerHTML = '<div class="empty-state">无持仓</div>';
+    }
+    // Errors
+    const errEl = document.getElementById('bot-errors');
+    if (s.errors && s.errors.length > 0) {
+      errEl.innerHTML = s.errors.slice(-3).map(e => `<div>${e}</div>`).join('');
+    } else {
+      errEl.innerHTML = '';
+    }
+    // Optimization
+    const optEl = document.getElementById('bot-optimization');
+    optEl.textContent = '上次: ' + (s.last_optimization || '从未');
+    if (s.optimization_result) {
+      optEl.textContent += ` | 收益:${s.optimization_result.train_return} 夏普:${s.optimization_result.train_sharpe}`;
+    }
+  } catch (e) {}
+}
+
+async function refreshBotTrades() {
+  try {
+    const r = await fetch('/api/crypto-bot/trades?limit=20');
+    if (!r.ok) return;
+    const trades = await r.json();
+    const el = document.getElementById('bot-trades-list');
+    if (!trades || trades.length === 0) {
+      el.innerHTML = '<div class="empty-state">暂无交易</div>';
+      return;
+    }
+    el.innerHTML = trades.slice(-10).reverse().map(t => {
+      const c = t.side === 'buy' ? 'var(--green)' : 'var(--red)';
+      return `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);font-size:11px">
+        <span style="color:${c};font-weight:600">${t.side === 'buy' ? '买' : '卖'}</span>
+        <span>${t.symbol.replace('-USDT','')}</span>
+        <span>${fmtVol(t.quantity)}</span>
+        <span>${fmtPrice(t.price)}</span>
+        <span style="color:var(--text-muted);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.reason}</span>
+      </div>`;
+    }).join('');
+  } catch (e) {}
+}
+
+// Init
+async function init() {
+  await checkConnection();
+  await Promise.all([refreshAll(), refreshAllTickers(), refreshTrading(), refreshBotStatus()]);
+  // Fast refresh: ticker/trades/books every 2s
+  setInterval(refreshAll, 2000);
+  // Tickers overview every 5s
+  setInterval(refreshAllTickers, 5000);
+  // Trading data every 5s
+  setInterval(refreshTrading, 5000);
+  // Bot status every 5s
+  setInterval(refreshBotStatus, 5000);
+  // Bot trades every 10s
+  setInterval(refreshBotTrades, 10000);
+  // Connection check every 10s
+  setInterval(checkConnection, 10000);
+}
+
+init();
+</script>
+</body>
+</html>

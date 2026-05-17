@@ -8,7 +8,7 @@ from quant_agent.broker import BrokerOrder
 from quant_agent.config import AppConfig
 from quant_agent.models import Bar, Position, Signal
 from quant_agent.risk import RiskManager
-from quant_agent.strategy import TrendRsiStrategy
+from quant_agent.strategies import TrendRsiStrategy
 
 
 @dataclass(frozen=True)
@@ -48,6 +48,12 @@ class PaperTradingCycle:
         self.risk_manager = risk_manager or RiskManager(config.risk, list(config.symbols))
 
     def run(self, start: str, end: str, timeframe: str = "1Min", submit_orders: bool = False) -> PaperCycleResult:
+        if submit_orders and not getattr(self.strategy, "allows_live_trading", True):
+            raise RuntimeError(
+                f"Strategy '{getattr(self.strategy, 'name', 'unknown')}' is not allowed for live/paper submit. "
+                "It can only be used in backtest or preview mode."
+            )
+
         account = self.broker.get_account()
         equity = _parse_positive_float(account.get("equity"), "account equity")
         remaining_buying_power = _parse_nonnegative_float(account.get("buying_power", 0.0), "buying power")
